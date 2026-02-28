@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Modal, Text, TouchableOpacity, View } from "react-native";
 import AuthScreen, { AuthField } from "../components/AuthScreen";
@@ -7,6 +7,9 @@ import { registerUser } from "../src/api/auth";
 
 export default function Register() {
     const router = useRouter();
+    const { role } = useLocalSearchParams();
+    const isWorker = role === 'worker';
+
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
@@ -38,8 +41,8 @@ export default function Register() {
                 password,
                 phoneNumber,
                 age: parseInt(age, 10) || 0,
-                userType: 4,
-                job: job || undefined,
+                userType: isWorker ? 4 : 5,
+                job: isWorker ? (job || undefined) : undefined,
             });
             router.push('/(tabs)' as any);
         } catch (error) {
@@ -48,7 +51,7 @@ export default function Register() {
         }
     };
 
-    const fields: AuthField[] = [
+    const baseFields: AuthField[] = [
         {
             name: "firstName",
             label: "First Name",
@@ -110,7 +113,11 @@ export default function Register() {
             keyboardType: "numeric",
             value: age,
             onChangeText: setAge,
-        },
+        }
+    ];
+
+    const fields: AuthField[] = isWorker ? [
+        ...baseFields,
         {
             name: "job",
             label: "Work Type",
@@ -121,7 +128,7 @@ export default function Register() {
             isSelect: true,
             onPressSelect: () => setJobModalVisible(true),
         }
-    ];
+    ] : baseFields;
 
     return (
         <>

@@ -58,7 +58,7 @@ export default function Login() {
             onForgotPasswordPress={() => router.push('/forgot-password' as any)}
             footerText="Don't have an account?"
             footerActionText="Sign up"
-            onFooterActionPress={() => router.push('/register' as any)}
+            onFooterActionPress={() => router.push('/register-choice' as any)}
         />
     );
 }

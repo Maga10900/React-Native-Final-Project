@@ -1,18 +1,38 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from 'expo-image-picker';
-import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, SafeAreaView, Text, View } from "react-native";
-import { updateWorkerProfile, WorkerProfile } from "../src/api/workerProfile";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Image, Pressable, SafeAreaView, Text, TouchableOpacity, View } from "react-native";
+import { getWorkerProfile, updateWorkerProfile, WorkerProfile } from "../src/api/workerProfile";
 
 export default function EditPhotoScreen() {
-    const params = useLocalSearchParams();
-    const workerParams = params.worker ? JSON.parse(params.worker as string) as WorkerProfile : null;
+    const [loadingParams, setLoadingParams] = useState(true);
+    const [worker, setWorker] = useState<WorkerProfile | null>(null);
 
     const [hasNewPhoto, setHasNewPhoto] = useState(false);
-    const [imageUri, setImageUri] = useState<string | null>(workerParams?.profilePhoto || null);
+    const [imageUri, setImageUri] = useState<string | null>(null);
     const [base64Image, setBase64Image] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        async function fetchProfile() {
+            try {
+                const profile = await getWorkerProfile();
+                if (profile) {
+                    setWorker(profile);
+                    if (profile.profilePhoto) {
+                        setImageUri(profile.profilePhoto);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to load profile", error);
+                Alert.alert("Error", "Failed to load worker profile");
+            } finally {
+                setLoadingParams(false);
+            }
+        }
+        fetchProfile();
+    }, []);
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -58,7 +78,7 @@ export default function EditPhotoScreen() {
     };
 
     const handleSave = async () => {
-        if (!workerParams) {
+        if (!worker) {
             Alert.alert("Error", "Missing worker data. Please go back and try again.");
             return;
         }
@@ -77,14 +97,14 @@ export default function EditPhotoScreen() {
             const photoData = `data:image/jpeg;base64,${base64Image}`;
 
             await updateWorkerProfile({
-                id: workerParams.id,
-                firstName: workerParams.firstName,
-                lastName: workerParams.lastName,
-                phoneNumber: workerParams.phoneNumber,
-                age: workerParams.age,
-                job: workerParams.job,
-                description: workerParams.description,
-                rating: workerParams.rating,
+                id: worker.id,
+                firstName: worker.firstName,
+                lastName: worker.lastName,
+                phoneNumber: worker.phoneNumber,
+                age: worker.age,
+                job: worker.job,
+                description: worker.description,
+                rating: worker.rating,
                 profilePhoto: photoData
             });
 
@@ -101,9 +121,12 @@ export default function EditPhotoScreen() {
             {/* Header */}
             <View className="flex-row items-center justify-between px-4 py-4 bg-white mt-8 border-b border-gray-100">
                 <View className="flex-row items-center">
-                    <Pressable onPress={() => router.back()}>
-                        <Ionicons name="chevron-back" size={24} color="black" />
-                    </Pressable>
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+                    >
+                        <Ionicons name="chevron-back" size={24} color="#1E1E1E" />
+                    </TouchableOpacity>
                     <Text className="text-xl font-bold ml-4">Edit photo</Text>
                 </View>
                 <Pressable

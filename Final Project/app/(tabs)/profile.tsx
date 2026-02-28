@@ -88,17 +88,17 @@ export default function ProfileTab() {
                     <ProfileItem
                         label="Name"
                         value={profile ? `${profile.firstName} ${profile.lastName}` : "Unknown"}
-                        onPress={() => router.push({ pathname: '/edit-profile', params: { worker: JSON.stringify(profile) } } as any)}
+                        onPress={() => router.push('/edit-profile' as any)}
                     />
                     <ProfileItem
                         label="Email"
                         value={profile?.email || "No email"}
-                        onPress={() => router.push({ pathname: '/edit-profile', params: { worker: JSON.stringify(profile) } } as any)}
+                        onPress={() => router.push('/edit-profile' as any)}
                     />
                     <ProfileItem
                         label="Contact"
                         value={profile?.phoneNumber || "No contact"}
-                        onPress={() => router.push({ pathname: '/edit-profile', params: { worker: JSON.stringify(profile) } } as any)}
+                        onPress={() => router.push('/edit-profile' as any)}
                     />
                     <ProfileItem
                         label="Job"

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { KeyboardTypeOptions, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { KeyboardTypeOptions, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export type AuthField = {
     name: string;
@@ -51,11 +51,14 @@ export default function AuthScreen({
 
     return (
         <View className="flex-1 bg-white pt-10 px-6">
-            <Pressable className="py-2 absolute top-10 left-6 z-10" onPress={() => router.back()}>
-                <Ionicons name="chevron-back" size={28} color="#1E1E1E" />
-            </Pressable>
+            <TouchableOpacity
+                onPress={() => router.back()}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100 mb-4"
+            >
+                <Ionicons name="chevron-back" size={24} color="#1E1E1E" />
+            </TouchableOpacity>
 
-            <ScrollView className="mt-20" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <ScrollView className="mt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
                 <Text className="text-[32px] font-black text-[#1E1E1E] mb-2">{title}</Text>
                 <Text className="text-gray-500 mb-10 text-base">{subtitle}</Text>
 

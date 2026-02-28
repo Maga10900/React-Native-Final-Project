@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { Animated, Dimensions, FlatList, Image, Pressable, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Dimensions, FlatList, Image, Text, TouchableOpacity, View } from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -52,9 +52,12 @@ export default function Onboarding() {
 
     return (
         <View className="flex-1 bg-white pt-10">
-            <Pressable className="px-4 py-2 rounded-lg absolute top-10 z-10" onPress={() => router.back()}>
-                <Ionicons name="chevron-back" size={24} color="black" />
-            </Pressable>
+            <TouchableOpacity
+                onPress={() => router.back()}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100 absolute top-10 left-4 z-10"
+            >
+                <Ionicons name="chevron-back" size={24} color="#1E1E1E" />
+            </TouchableOpacity>
             <View style={{ flex: 3 }}>
                 <FlatList
                     data={slides}
