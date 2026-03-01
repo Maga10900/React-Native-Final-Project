@@ -1,6 +1,6 @@
 import { getToken } from "../storage/token";
 
-const BASE_URL = "http://192.168.0.189:5232";
+const BASE_URL = "http://172.20.31.30:5232";
 
 interface RequestOptions extends RequestInit {
   // Custom options can be added here if needed

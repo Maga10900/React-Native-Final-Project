@@ -2,19 +2,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    Text,
+    View,
 } from "react-native";
 import {
-  getCurrentUserRole,
-  getWorkerProfile,
-  WorkerProfile,
+    getCurrentUserRole,
+    getWorkerProfile,
+    WorkerProfile,
 } from "../../src/api/workerProfile";
 import { clearToken } from "../../src/storage/token";
 
@@ -147,7 +147,7 @@ export default function ProfileTab() {
           />
           {profile?.job && <ProfileItem label="Job" value={profile.job} />}
 
-          {role === "Client" && (
+          {(role === "Client" || role === "5") && (
             <ProfileItem
               label="My Placed Orders"
               onPress={() => router.push("/my-orders" as any)}

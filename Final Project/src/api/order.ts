@@ -42,9 +42,31 @@ export async function getAllOrders(): Promise<Order[]> {
   return response.data;
 }
 
-export async function getOrdersByUserId(userId: string): Promise<Order[]> {
+export async function getOrderById(orderId: string): Promise<Order> {
+  const response = await apiRequest<{ data: Order }>(
+    `/api/Order/GetById/${orderId}`,
+    {
+      method: "GET",
+    },
+    true,
+  );
+  return response.data;
+}
+
+export async function getOrdersByClientId(clientId: string): Promise<Order[]> {
   const response = await apiRequest<{ data: Order[] }>(
-    `/api/Order/GetByUserId/${userId}`,
+    `/api/Order/GetByClientId/client/${clientId}`,
+    {
+      method: "GET",
+    },
+    true,
+  );
+  return response.data;
+}
+
+export async function getOrdersByWorkerId(workerId: string): Promise<Order[]> {
+  const response = await apiRequest<{ data: Order[] }>(
+    `/api/Order/GetByWorkerId/${workerId}`,
     {
       method: "GET",
     },

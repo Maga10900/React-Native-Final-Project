@@ -2,16 +2,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Pressable,
-  Text,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    Pressable,
+    Text,
+    View,
 } from "react-native";
-import { getAllOrders, Order } from "../../src/api/order";
+import { getOrdersByWorkerId, Order } from "../../src/api/order";
 import { getAllWorkers } from "../../src/api/worker";
-import { getCurrentUserRole, WorkerProfile } from "../../src/api/workerProfile";
+import {
+    getCurrentUserRole,
+    getCurrentWorkerId,
+    WorkerProfile,
+} from "../../src/api/workerProfile";
 
 export default function TabIndex() {
   const [workers, setWorkers] = useState<WorkerProfile[]>([]);
@@ -25,9 +29,12 @@ export default function TabIndex() {
         const userRole = await getCurrentUserRole();
         setRole(userRole);
 
-        if (userRole === "Worker") {
-          const ordersData = await getAllOrders();
-          setOrders(ordersData || []);
+        if (userRole === "Worker" || userRole === "4") {
+          const workerId = await getCurrentWorkerId();
+          if (workerId) {
+            const ordersData = await getOrdersByWorkerId(workerId);
+            setOrders(ordersData || []);
+          }
         } else {
           const data = await getAllWorkers();
           setWorkers(data || []);

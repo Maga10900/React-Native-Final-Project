@@ -3,19 +3,31 @@ import { router, useFocusEffect } from "expo-router";
 import { jwtDecode } from "jwt-decode";
 import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Pressable,
-    SafeAreaView,
-    Text,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { getOrdersByUserId, Order } from "../src/api/order";
+import {
+  getOrderById,
+  getOrdersByClientId,
+  getOrdersByWorkerId,
+  Order,
+} from "../src/api/order";
+import { getCurrentUserRole } from "../src/api/workerProfile";
 import { getToken } from "../src/storage/token";
 
 export default function MyOrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -33,12 +45,23 @@ export default function MyOrdersScreen() {
           const decoded = jwtDecode<any>(token);
           const userId = decoded.id || decoded.nameid;
 
-          const data = await getOrdersByUserId(userId);
+          const userRole = await getCurrentUserRole();
+          if (isActive) {
+            setRole(userRole);
+          }
+
+          let data: Order[] = [];
+          if (userRole === "Worker" || userRole === "4") {
+            data = await getOrdersByWorkerId(userId);
+          } else {
+            data = await getOrdersByClientId(userId);
+          }
+
           if (isActive) {
             setOrders(data || []);
           }
         } catch (error: any) {
-          console.error("Failed to load client orders", error);
+          console.error("Failed to load orders", error);
         } finally {
           if (isActive) setLoading(false);
         }
@@ -51,6 +74,33 @@ export default function MyOrdersScreen() {
       };
     }, []),
   );
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchError("Please enter an Order ID");
+      return;
+    }
+
+    setSearching(true);
+    setSearchError("");
+
+    try {
+      const result = await getOrderById(searchQuery.trim());
+      if (result) {
+        router.push({
+          pathname: "/order-details",
+          params: { id: result.id, orderParams: JSON.stringify(result) },
+        } as any);
+      } else {
+        setSearchError("Order not found");
+      }
+    } catch (err) {
+      console.error("Failed to fetch order", err);
+      setSearchError("Order not found or access denied");
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const getStatusText = (status: number) => {
     switch (status) {
@@ -124,7 +174,49 @@ export default function MyOrdersScreen() {
         <Pressable onPress={() => router.back()} className="p-2">
           <Ionicons name="chevron-back" size={24} color="black" />
         </Pressable>
-        <Text className="text-xl font-bold ml-4">My Placed Orders</Text>
+        <Text className="text-xl font-bold ml-4">
+          {role === "Worker" || role === "4"
+            ? "My Assigned Orders"
+            : role === "Client" || role === "5"
+              ? "My Placed Orders"
+              : "My Orders"}
+        </Text>
+      </View>
+
+      <View className="px-4 py-3 bg-white border-b border-gray-100">
+        <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
+          <Ionicons name="search" size={20} color="gray" />
+          <TextInput
+            placeholder="Search Order by ID..."
+            className="flex-1 ml-2 text-base"
+            value={searchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              setSearchError("");
+            }}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+            autoCapitalize="none"
+          />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery("")} className="mr-2">
+              <Ionicons name="close-circle" size={20} color="gray" />
+            </Pressable>
+          )}
+          {searching ? (
+            <ActivityIndicator size="small" color="#2C2C2C" />
+          ) : (
+            <Pressable
+              onPress={handleSearch}
+              className="bg-blue-500 px-3 py-1 rounded-lg"
+            >
+              <Text className="text-white font-semibold">Find</Text>
+            </Pressable>
+          )}
+        </View>
+        {searchError ? (
+          <Text className="text-red-500 text-sm mt-2 ml-1">{searchError}</Text>
+        ) : null}
       </View>
 
       {loading ? (
@@ -145,7 +237,11 @@ export default function MyOrdersScreen() {
                 color="#D1D5DB"
               />
               <Text className="text-gray-500 text-lg mt-4 text-center">
-                You haven't placed any orders yet.
+                {role === "Worker" || role === "4"
+                  ? "You don't have any assigned orders yet."
+                  : role === "Client" || role === "5"
+                    ? "You haven't placed any orders yet."
+                    : "No orders available."}
               </Text>
             </View>
           }

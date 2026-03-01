@@ -7,10 +7,10 @@ import {
     Pressable,
     ScrollView,
     Text,
-    View
+    View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import { Order } from "../src/api/order";
+import { getOrderById, Order } from "../src/api/order";
 
 interface Region {
   latitude: number;
@@ -20,7 +20,10 @@ interface Region {
 }
 
 export default function OrderDetailsScreen() {
-  const { orderParams } = useLocalSearchParams<{ orderParams: string }>();
+  const { orderParams, id } = useLocalSearchParams<{
+    orderParams?: string;
+    id?: string;
+  }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,16 +39,31 @@ export default function OrderDetailsScreen() {
   } | null>(null);
 
   useEffect(() => {
-    if (orderParams) {
-      try {
-        const parsedOrder = JSON.parse(orderParams) as Order;
-        setOrder(parsedOrder);
-        geocodeAddress(parsedOrder.address);
-      } catch (error) {
-        console.error("Failed to parse order details:", error);
+    async function loadOrder() {
+      if (orderParams) {
+        try {
+          const parsedOrder = JSON.parse(orderParams) as Order;
+          setOrder(parsedOrder);
+          geocodeAddress(parsedOrder.address);
+        } catch (error) {
+          console.error("Failed to parse order details:", error);
+        }
+      } else if (id) {
+        try {
+          const fetchedOrder = await getOrderById(id);
+          setOrder(fetchedOrder);
+          geocodeAddress(fetchedOrder.address);
+        } catch (error) {
+          console.error("Failed to fetch order:", error);
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
       }
     }
-  }, [orderParams]);
+
+    loadOrder();
+  }, [orderParams, id]);
 
   const geocodeAddress = async (address: string) => {
     try {
