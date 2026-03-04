@@ -2,19 +2,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  View,
 } from "react-native";
 import {
-    getCurrentUserRole,
-    getWorkerProfile,
-    WorkerProfile,
+  getCurrentUserRole,
+  getWorkerProfile,
+  WorkerProfile,
 } from "../../src/api/workerProfile";
 import { clearToken } from "../../src/storage/token";
 
@@ -144,6 +144,10 @@ export default function ProfileTab() {
             label="Contact"
             value={profile?.phoneNumber || "No contact"}
             onPress={() => router.push("/edit-profile" as any)}
+          />
+          <ProfileItem
+            label="Card Payment"
+            onPress={() => router.push("/card-payment" as any)}
           />
           {profile?.job && <ProfileItem label="Job" value={profile.job} />}
 

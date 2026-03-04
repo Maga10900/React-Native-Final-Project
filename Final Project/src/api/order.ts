@@ -2,6 +2,7 @@ import { apiRequest } from "./client";
 
 export interface CreateOrderRequest {
   workerId: string;
+  clientId: string;
   salary: number;
   address: string;
   photos: string[];
@@ -64,27 +65,38 @@ export async function getOrdersByClientId(clientId: string): Promise<Order[]> {
   return response.data;
 }
 
+// Backend has no GetByWorkerId endpoint and GetAll may be admin-only.
+// We use the worker's notifications (which contain orderId) to get the worker's orders.
 export async function getOrdersByWorkerId(workerId: string): Promise<Order[]> {
-  const response = await apiRequest<{ data: Order[] }>(
-    `/api/Order/GetByWorkerId/${workerId}`,
-    {
-      method: "GET",
-    },
-    true,
+  const { getWorkerNotifications } = await import("./notification");
+  const notifications = await getWorkerNotifications(workerId);
+  if (!notifications || notifications.length === 0) return [];
+
+  // Deduplicate order IDs from notifications
+  const orderIds = [...new Set(notifications.map((n) => n.orderId))];
+
+  // Fetch each order by ID in parallel
+  const orders = await Promise.allSettled(
+    orderIds.map((orderId) => getOrderById(orderId)),
   );
-  return response.data;
+
+  return orders
+    .filter((r) => r.status === "fulfilled")
+    .map((r) => (r as PromiseFulfilledResult<Order>).value);
 }
 
-export async function updateOrderStatus(
-  orderId: string,
-  status: number,
-): Promise<any> {
+export async function acceptOrder(orderId: string): Promise<any> {
   return apiRequest<any>(
-    "/api/Order/UpdateStatus",
-    {
-      method: "PUT",
-      body: JSON.stringify({ id: orderId, status }),
-    },
+    `/api/Order/Accept/${orderId}`,
+    { method: "POST" },
+    true,
+  );
+}
+
+export async function rejectOrder(orderId: string): Promise<any> {
+  return apiRequest<any>(
+    `/api/Order/Reject/${orderId}`,
+    { method: "POST" },
     true,
   );
 }

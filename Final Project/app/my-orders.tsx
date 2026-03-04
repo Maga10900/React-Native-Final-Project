@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import { jwtDecode } from "jwt-decode";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,8 +16,10 @@ import {
   getOrdersByWorkerId,
   Order,
 } from "../src/api/order";
-import { getCurrentUserRole } from "../src/api/workerProfile";
-import { getToken } from "../src/storage/token";
+import {
+  getCurrentUserRole,
+  getCurrentWorkerId,
+} from "../src/api/workerProfile";
 
 export default function MyOrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -29,6 +30,8 @@ export default function MyOrdersScreen() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
 
+  const [error, setError] = useState<string | null>(null);
+
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -37,21 +40,25 @@ export default function MyOrdersScreen() {
         try {
           if (isActive) {
             setLoading(true);
+            setError(null);
           }
 
-          const token = await getToken();
-          if (!token) throw new Error("No token found");
-
-          const decoded = jwtDecode<any>(token);
-          const userId = decoded.id || decoded.nameid;
-
+          const userId = await getCurrentWorkerId();
           const userRole = await getCurrentUserRole();
+
+          console.log("[MyOrders] userId:", userId, "role:", userRole);
+
+          if (!userId)
+            throw new Error(
+              "Could not read user ID from token. Please log out and log in again.",
+            );
+
           if (isActive) {
             setRole(userRole);
           }
 
           let data: Order[] = [];
-          if (userRole === "Worker" || userRole === "4") {
+          if (userRole === "Worker") {
             data = await getOrdersByWorkerId(userId);
           } else {
             data = await getOrdersByClientId(userId);
@@ -62,6 +69,7 @@ export default function MyOrdersScreen() {
           }
         } catch (error: any) {
           console.error("Failed to load orders", error);
+          if (isActive) setError(error?.message || "Failed to load orders");
         } finally {
           if (isActive) setLoading(false);
         }
@@ -223,6 +231,23 @@ export default function MyOrdersScreen() {
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#2C2C2C" />
         </View>
+      ) : error ? (
+        <View className="flex-1 justify-center items-center mt-20 px-8">
+          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+          <Text className="text-red-500 text-base mt-4 text-center">
+            {error}
+          </Text>
+          <Pressable
+            className="mt-6 bg-blue-500 px-6 py-3 rounded-xl"
+            onPress={() => {
+              setError(null);
+              setOrders([]);
+              setLoading(true);
+            }}
+          >
+            <Text className="text-white font-semibold">Retry</Text>
+          </Pressable>
+        </View>
       ) : (
         <FlatList
           data={orders}
@@ -237,9 +262,9 @@ export default function MyOrdersScreen() {
                 color="#D1D5DB"
               />
               <Text className="text-gray-500 text-lg mt-4 text-center">
-                {role === "Worker" || role === "4"
+                {role === "Worker"
                   ? "You don't have any assigned orders yet."
-                  : role === "Client" || role === "5"
+                  : role === "Client"
                     ? "You haven't placed any orders yet."
                     : "No orders available."}
               </Text>

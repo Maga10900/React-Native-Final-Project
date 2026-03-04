@@ -81,7 +81,7 @@ export default function TabIndex() {
         </Text>
       ) : null}
 
-      {role !== "Worker" && (
+      {role !== "Worker" && role !== "4" && (
         <Pressable
           className="bg-black py-3 rounded-lg items-center mt-2 border border-gray-800"
           onPress={() =>

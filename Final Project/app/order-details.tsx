@@ -3,14 +3,21 @@ import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Pressable,
-    ScrollView,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import { getOrderById, Order } from "../src/api/order";
+import {
+  acceptOrder,
+  getOrderById,
+  Order,
+  rejectOrder,
+} from "../src/api/order";
+import { getCurrentUserRole } from "../src/api/workerProfile";
 
 interface Region {
   latitude: number;
@@ -26,6 +33,8 @@ export default function OrderDetailsScreen() {
   }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const [region, setRegion] = useState<Region>({
     latitude: 37.78825,
@@ -39,7 +48,12 @@ export default function OrderDetailsScreen() {
   } | null>(null);
 
   useEffect(() => {
-    async function loadOrder() {
+    async function init() {
+      // Load role
+      const userRole = await getCurrentUserRole();
+      setRole(userRole);
+
+      // Load order
       if (orderParams) {
         try {
           const parsedOrder = JSON.parse(orderParams) as Order;
@@ -47,6 +61,7 @@ export default function OrderDetailsScreen() {
           geocodeAddress(parsedOrder.address);
         } catch (error) {
           console.error("Failed to parse order details:", error);
+          setLoading(false);
         }
       } else if (id) {
         try {
@@ -62,7 +77,7 @@ export default function OrderDetailsScreen() {
       }
     }
 
-    loadOrder();
+    init();
   }, [orderParams, id]);
 
   const geocodeAddress = async (address: string) => {
@@ -85,8 +100,70 @@ export default function OrderDetailsScreen() {
     }
   };
 
-  const getStatusText = (status: number) => {
-    switch (status) {
+  const handleAccept = async () => {
+    if (!order) return;
+    Alert.alert("Accept Order", "Are you sure you want to accept this order?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Accept",
+        style: "default",
+        onPress: async () => {
+          setActionLoading(true);
+          try {
+            await acceptOrder(order.id);
+            setOrder({ ...order, status: 1 });
+            Alert.alert("Success", "Order accepted successfully!");
+          } catch (err: any) {
+            Alert.alert("Error", err?.message || "Failed to accept order");
+          } finally {
+            setActionLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleReject = async () => {
+    if (!order) return;
+    Alert.alert("Reject Order", "Are you sure you want to reject this order?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Reject",
+        style: "destructive",
+        onPress: async () => {
+          setActionLoading(true);
+          try {
+            await rejectOrder(order.id);
+            setOrder({ ...order, status: 2 });
+            Alert.alert("Order Rejected", "The order has been rejected.");
+          } catch (err: any) {
+            Alert.alert("Error", err?.message || "Failed to reject order");
+          } finally {
+            setActionLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const normalizeStatus = (status: any): number => {
+    // Handle string values from .NET enum serialization
+    if (typeof status === "string") {
+      const s = status.toLowerCase();
+      if (s === "pending") return 0;
+      if (s === "accepted") return 1;
+      if (s === "rejected") return 2;
+    }
+    // Some backends use 1-based (1=Pending, 2=Accepted, 3=Rejected)
+    if (status === 1) return 0;
+    if (status === 2) return 1;
+    if (status === 3) return 2;
+    // 0-based already
+    return Number(status);
+  };
+
+  const getStatusText = (status: any) => {
+    switch (normalizeStatus(status)) {
       case 0:
         return "Pending";
       case 1:
@@ -94,12 +171,12 @@ export default function OrderDetailsScreen() {
       case 2:
         return "Rejected";
       default:
-        return "Unknown";
+        return `Unknown (${status})`;
     }
   };
 
-  const getStatusColor = (status: number) => {
-    switch (status) {
+  const getStatusColor = (status: any) => {
+    switch (normalizeStatus(status)) {
       case 0:
         return "bg-yellow-100 text-yellow-800";
       case 1:
@@ -118,6 +195,11 @@ export default function OrderDetailsScreen() {
       </View>
     );
   }
+
+  console.log("[OrderDetails] raw order:", JSON.stringify(order));
+
+  const isWorker = role === "Worker";
+  const isPending = normalizeStatus(order.status) === 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: "white", paddingTop: 48 }}>
@@ -158,7 +240,7 @@ export default function OrderDetailsScreen() {
             </Text>
           </View>
 
-          {/* Creation Date if available */}
+          {/* Creation Date */}
           {order.createdDate && (
             <View className="flex-row items-center">
               <Ionicons name="calendar-outline" size={20} color="#4B5563" />
@@ -175,7 +257,6 @@ export default function OrderDetailsScreen() {
           <Text className="text-gray-800 font-bold text-lg mb-3">
             Service Location
           </Text>
-
           <View className="flex-row items-start mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
             <Ionicons
               name="location"
@@ -209,7 +290,7 @@ export default function OrderDetailsScreen() {
               <MapView
                 style={{ flex: 1 }}
                 region={region}
-                scrollEnabled={false} // Make it read-only
+                scrollEnabled={false}
                 zoomEnabled={true}
                 pitchEnabled={false}
                 rotateEnabled={false}
@@ -221,7 +302,7 @@ export default function OrderDetailsScreen() {
         </View>
 
         {/* Job Details */}
-        <View className="mb-10">
+        <View className="mb-6">
           <Text className="text-gray-800 font-bold text-lg mb-3">
             Job Description & Requirements
           </Text>
@@ -237,6 +318,70 @@ export default function OrderDetailsScreen() {
             )}
           </View>
         </View>
+
+        {/* Worker Accept / Reject buttons — only shown to worker on pending orders */}
+        {isWorker && isPending && (
+          <View className="mb-10">
+            <Text className="text-gray-800 font-bold text-lg mb-3">
+              Your Decision
+            </Text>
+            {actionLoading ? (
+              <View className="items-center py-6">
+                <ActivityIndicator size="large" color="#2C2C2C" />
+                <Text className="text-gray-500 mt-2">Processing...</Text>
+              </View>
+            ) : (
+              <View className="flex-row gap-4">
+                <Pressable
+                  onPress={handleAccept}
+                  className="flex-1 bg-green-500 py-4 rounded-xl items-center"
+                >
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={22}
+                    color="white"
+                  />
+                  <Text className="text-white font-bold text-base mt-1">
+                    Accept
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleReject}
+                  className="flex-1 bg-red-500 py-4 rounded-xl items-center"
+                >
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={22}
+                    color="white"
+                  />
+                  <Text className="text-white font-bold text-base mt-1">
+                    Reject
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Already decided — show status banner */}
+        {isWorker && !isPending && (
+          <View
+            className={`mb-10 p-4 rounded-xl items-center ${order.status === 1 ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}
+          >
+            <Ionicons
+              name={order.status === 1 ? "checkmark-circle" : "close-circle"}
+              size={36}
+              color={order.status === 1 ? "#16A34A" : "#DC2626"}
+            />
+            <Text
+              className={`font-bold text-base mt-2 ${order.status === 1 ? "text-green-700" : "text-red-700"}`}
+            >
+              {order.status === 1
+                ? "You accepted this order"
+                : "You rejected this order"}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

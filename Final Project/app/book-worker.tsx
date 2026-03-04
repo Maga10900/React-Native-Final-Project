@@ -1,18 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
+import { jwtDecode } from "jwt-decode";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { createOrder } from "../src/api/order";
+import { CardInfo, getCard } from "../src/storage/card";
+import { getToken } from "../src/storage/token";
 
 interface Region {
   latitude: number;
@@ -38,6 +41,8 @@ export default function BookWorkerScreen() {
     longitude: number;
   } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Card">("Cash");
+  const [cardInfo, setCardInfo] = useState<CardInfo | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -62,6 +67,10 @@ export default function BookWorkerScreen() {
         longitude: location.coords.longitude,
       });
       reverseGeocode(location.coords.latitude, location.coords.longitude);
+
+      // Load card info
+      const card = await getCard();
+      setCardInfo(card);
     })();
   }, []);
 
@@ -97,10 +106,22 @@ export default function BookWorkerScreen() {
       return;
     }
 
+    if (paymentMethod === "Card" && !cardInfo) {
+      Alert.alert("Error", "Please add a card in your profile first.");
+      return;
+    }
+
     setLoading(true);
     try {
+      const token = await getToken();
+      if (!token) throw new Error("Authentication required");
+
+      const decoded = jwtDecode<any>(token);
+      const clientId = decoded.id || decoded.nameid;
+
       await createOrder({
         workerId: workerId as string,
+        clientId,
         salary: parseFloat(salary),
         address,
         details,
@@ -177,7 +198,7 @@ export default function BookWorkerScreen() {
           </View>
         </View>
 
-        <View className="mb-6">
+        <View className="mb-4">
           <Text className="text-gray-700 font-semibold mb-2">
             Job Details & Requirements
           </Text>
@@ -189,6 +210,72 @@ export default function BookWorkerScreen() {
             value={details}
             onChangeText={setDetails}
           />
+        </View>
+
+        <View className="mb-6">
+          <Text className="text-gray-700 font-semibold mb-3">
+            Payment Method
+          </Text>
+          <View className="flex-row gap-3">
+            <Pressable
+              onPress={() => setPaymentMethod("Cash")}
+              className={`flex-1 flex-row items-center justify-center py-3 rounded-xl border ${paymentMethod === "Cash" ? "bg-black border-black" : "bg-white border-gray-200"}`}
+            >
+              <Ionicons
+                name="cash-outline"
+                size={20}
+                color={paymentMethod === "Cash" ? "white" : "black"}
+              />
+              <Text
+                className={`ml-2 font-semibold ${paymentMethod === "Cash" ? "text-white" : "text-black"}`}
+              >
+                Cash
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setPaymentMethod("Card")}
+              className={`flex-1 flex-row items-center justify-center py-3 rounded-xl border ${paymentMethod === "Card" ? "bg-black border-black" : "bg-white border-gray-200"}`}
+            >
+              <Ionicons
+                name="card-outline"
+                size={20}
+                color={paymentMethod === "Card" ? "white" : "black"}
+              />
+              <Text
+                className={`ml-2 font-semibold ${paymentMethod === "Card" ? "text-white" : "text-black"}`}
+              >
+                Card
+              </Text>
+            </Pressable>
+          </View>
+
+          {paymentMethod === "Card" && (
+            <View className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+              {cardInfo ? (
+                <View className="flex-row items-center justify-between">
+                  <View>
+                    <Text className="text-gray-800 font-bold">
+                      **** **** **** {cardInfo.cardNumber.slice(-4)}
+                    </Text>
+                    <Text className="text-gray-500 text-xs">
+                      {cardInfo.cardHolderName} • Exp: {cardInfo.expiryDate}
+                    </Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={24} color="black" />
+                </View>
+              ) : (
+                <Pressable
+                  onPress={() => router.push("/card-payment" as any)}
+                  className="flex-row items-center"
+                >
+                  <Text className="text-red-500 font-semibold flex-1">
+                    No card found. Click to add one.
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="#EF4444" />
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
 
         <Pressable

@@ -33,12 +33,16 @@ export async function getCurrentWorkerId(): Promise<string | null> {
   if (!token) return null;
 
   const decoded = decodeJwt(token);
-  // In many .NET apps, the nameidentifier claim holds the ID.
-  // If the JWT puts it directly in 'id' or 'sub', check those.
+  if (!decoded) return null;
+
+  // Log all claims for debugging
+  console.log("[Auth] JWT claims:", JSON.stringify(decoded));
+
   return (
     decoded?.[
       "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
     ] ||
+    decoded?.nameid ||
     decoded?.id ||
     decoded?.sub ||
     null
@@ -50,11 +54,16 @@ export async function getCurrentUserRole(): Promise<string | null> {
   if (!token) return null;
 
   const decoded = decodeJwt(token);
-  return (
+  if (!decoded) return null;
+
+  const role =
     decoded?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
     decoded?.role ||
-    null
-  );
+    decoded?.["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role"] ||
+    null;
+
+  console.log("[Auth] User role:", role);
+  return role;
 }
 
 /**
