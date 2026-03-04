@@ -22,6 +22,7 @@ export default function Register() {
   const [age, setAge] = useState("");
   const [job, setJob] = useState("");
   const [jobModalVisible, setJobModalVisible] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const jobOptions = [
     { label: "Plumber", icon: "🛠️" },
@@ -31,10 +32,34 @@ export default function Register() {
   ];
 
   const handleRegister = async () => {
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match!");
+    const newErrors: { [key: string]: string } = {};
+    const nameRegex = /^[a-zA-ZçÇğĞıİöÖşŞüÜ\s\-']+$/;
+
+    if (!firstName) newErrors.firstName = "First name is required";
+    else if (!nameRegex.test(firstName))
+      newErrors.firstName = "Name should not contain numbers";
+
+    if (!lastName) newErrors.lastName = "Last name is required";
+    else if (!nameRegex.test(lastName))
+      newErrors.lastName = "Name should not contain numbers";
+
+    if (!email) newErrors.email = "Email is required";
+    if (!password) newErrors.password = "Password is required";
+    if (!confirmPassword)
+      newErrors.confirmPassword = "Confirm password is required";
+    else if (password !== confirmPassword)
+      newErrors.confirmPassword = "Passwords do not match";
+
+    if (!phoneNumber) newErrors.phoneNumber = "Phone number is required";
+    if (!age) newErrors.age = "Age is required";
+    if (isWorker && !job) newErrors.job = "Please select a work type";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
+
+    setErrors({});
 
     try {
       await registerUser({
@@ -75,7 +100,11 @@ export default function Register() {
       icon: "person-outline",
       placeholder: "Enter your first name",
       value: firstName,
-      onChangeText: setFirstName,
+      onChangeText: (text) => {
+        setFirstName(text);
+        if (errors.firstName) setErrors((prev) => ({ ...prev, firstName: "" }));
+      },
+      error: errors.firstName,
     },
     {
       name: "lastName",
@@ -83,7 +112,11 @@ export default function Register() {
       icon: "person-outline",
       placeholder: "Enter your last name",
       value: lastName,
-      onChangeText: setLastName,
+      onChangeText: (text) => {
+        setLastName(text);
+        if (errors.lastName) setErrors((prev) => ({ ...prev, lastName: "" }));
+      },
+      error: errors.lastName,
     },
     {
       name: "email",
@@ -93,7 +126,11 @@ export default function Register() {
       keyboardType: "email-address",
       autoCapitalize: "none",
       value: email,
-      onChangeText: setEmail,
+      onChangeText: (text) => {
+        setEmail(text);
+        if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+      },
+      error: errors.email,
     },
     {
       name: "password",
@@ -102,7 +139,11 @@ export default function Register() {
       placeholder: "Create a password",
       isPassword: true,
       value: password,
-      onChangeText: setPassword,
+      onChangeText: (text) => {
+        setPassword(text);
+        if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
+      },
+      error: errors.password,
     },
     {
       name: "confirmPassword",
@@ -111,7 +152,12 @@ export default function Register() {
       placeholder: "Confirm your password",
       isPassword: true,
       value: confirmPassword,
-      onChangeText: setConfirmPassword,
+      onChangeText: (text) => {
+        setConfirmPassword(text);
+        if (errors.confirmPassword)
+          setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+      },
+      error: errors.confirmPassword,
     },
     {
       name: "phoneNumber",
@@ -120,7 +166,12 @@ export default function Register() {
       placeholder: "Enter your phone number",
       keyboardType: "phone-pad",
       value: phoneNumber,
-      onChangeText: setPhoneNumber,
+      onChangeText: (text) => {
+        setPhoneNumber(text);
+        if (errors.phoneNumber)
+          setErrors((prev) => ({ ...prev, phoneNumber: "" }));
+      },
+      error: errors.phoneNumber,
     },
     {
       name: "age",
@@ -129,7 +180,11 @@ export default function Register() {
       placeholder: "Enter your age",
       keyboardType: "numeric",
       value: age,
-      onChangeText: setAge,
+      onChangeText: (text) => {
+        setAge(text);
+        if (errors.age) setErrors((prev) => ({ ...prev, age: "" }));
+      },
+      error: errors.age,
     },
   ];
 
@@ -144,7 +199,11 @@ export default function Register() {
           value: job,
           onChangeText: () => {},
           isSelect: true,
-          onPressSelect: () => setJobModalVisible(true),
+          onPressSelect: () => {
+            setJobModalVisible(true);
+            if (errors.job) setErrors((prev) => ({ ...prev, job: "" }));
+          },
+          error: errors.job,
         },
       ]
     : baseFields;

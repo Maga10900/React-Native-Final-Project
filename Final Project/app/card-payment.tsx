@@ -2,13 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { CardInfo, getCard, saveCard } from "../src/storage/card";
 
@@ -19,6 +19,7 @@ export default function CardPaymentScreen() {
   const [cardHolderName, setCardHolderName] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     async function loadCard() {
@@ -49,6 +50,7 @@ export default function CardPaymentScreen() {
     }
 
     setExpiryDate(formattedText);
+    if (errors.expiryDate) setErrors((prev) => ({ ...prev, expiryDate: "" }));
   };
 
   const validateExpiry = (date: string) => {
@@ -68,22 +70,31 @@ export default function CardPaymentScreen() {
   };
 
   const handleSave = async () => {
-    if (!cardNumber || !expiryDate || !cvv || !cardHolderName) {
-      Alert.alert("Error", "Please fill all fields.");
+    const newErrors: { [key: string]: string } = {};
+    const nameRegex = /^[a-zA-ZçÇğĞıİöÖşŞüÜ\s\-']+$/;
+
+    if (!cardHolderName)
+      newErrors.cardHolderName = "Card holder name is required";
+    else if (!nameRegex.test(cardHolderName))
+      newErrors.cardHolderName = "Name should not contain numbers";
+
+    if (!cardNumber) newErrors.cardNumber = "Card number is required";
+    else if (cardNumber.length < 16)
+      newErrors.cardNumber = "Invalid card number";
+
+    if (!expiryDate) newErrors.expiryDate = "Expiry date is required";
+    else if (!validateExpiry(expiryDate))
+      newErrors.expiryDate = "Invalid or expired date";
+
+    if (!cvv) newErrors.cvv = "CVV is required";
+    else if (cvv.length < 3) newErrors.cvv = "Invalid CVV";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    // Basic validation
-    if (cardNumber.length < 16) {
-      Alert.alert("Error", "Invalid card number.");
-      return;
-    }
-
-    if (!validateExpiry(expiryDate)) {
-      Alert.alert("Error", "Invalid or expired date (MM/YY).");
-      return;
-    }
-
+    setErrors({});
     setLoading(true);
     try {
       const card: CardInfo = {
@@ -126,23 +137,41 @@ export default function CardPaymentScreen() {
             Card Holder Name
           </Text>
           <TextInput
-            className="border border-gray-300 rounded-lg p-3 bg-gray-50 text-base"
+            className={`border ${errors.cardHolderName ? "border-red-500" : "border-gray-300"} rounded-lg p-3 bg-gray-50 text-base`}
             placeholder="John Doe"
             value={cardHolderName}
-            onChangeText={setCardHolderName}
+            onChangeText={(text) => {
+              setCardHolderName(text);
+              if (errors.cardHolderName)
+                setErrors((prev) => ({ ...prev, cardHolderName: "" }));
+            }}
           />
+          {errors.cardHolderName && (
+            <Text className="text-red-500 text-xs mt-1 ml-1">
+              {errors.cardHolderName}
+            </Text>
+          )}
         </View>
 
         <View className="mb-4">
           <Text className="text-gray-700 font-semibold mb-2">Card Number</Text>
           <TextInput
-            className="border border-gray-300 rounded-lg p-3 bg-gray-50 text-base"
+            className={`border ${errors.cardNumber ? "border-red-500" : "border-gray-300"} rounded-lg p-3 bg-gray-50 text-base`}
             placeholder="0000 0000 0000 0000"
             keyboardType="numeric"
             maxLength={16}
             value={cardNumber}
-            onChangeText={setCardNumber}
+            onChangeText={(text) => {
+              setCardNumber(text);
+              if (errors.cardNumber)
+                setErrors((prev) => ({ ...prev, cardNumber: "" }));
+            }}
           />
+          {errors.cardNumber && (
+            <Text className="text-red-500 text-xs mt-1 ml-1">
+              {errors.cardNumber}
+            </Text>
+          )}
         </View>
 
         <View className="flex-row mb-6">
@@ -151,25 +180,38 @@ export default function CardPaymentScreen() {
               Expiry Date
             </Text>
             <TextInput
-              className="border border-gray-300 rounded-lg p-3 bg-gray-50 text-base"
+              className={`border ${errors.expiryDate ? "border-red-500" : "border-gray-300"} rounded-lg p-3 bg-gray-50 text-base`}
               placeholder="MM/YY"
               value={expiryDate}
               onChangeText={handleExpiryChange}
               maxLength={5}
               keyboardType="numeric"
             />
+            {errors.expiryDate && (
+              <Text className="text-red-500 text-xs mt-1 ml-1">
+                {errors.expiryDate}
+              </Text>
+            )}
           </View>
           <View className="flex-1 ml-2">
             <Text className="text-gray-700 font-semibold mb-2">CVV</Text>
             <TextInput
-              className="border border-gray-300 rounded-lg p-3 bg-gray-50 text-base"
+              className={`border ${errors.cvv ? "border-red-500" : "border-gray-300"} rounded-lg p-3 bg-gray-50 text-base`}
               placeholder="123"
               keyboardType="numeric"
               maxLength={3}
               secureTextEntry
               value={cvv}
-              onChangeText={setCvv}
+              onChangeText={(text) => {
+                setCvv(text);
+                if (errors.cvv) setErrors((prev) => ({ ...prev, cvv: "" }));
+              }}
             />
+            {errors.cvv && (
+              <Text className="text-red-500 text-xs mt-1 ml-1">
+                {errors.cvv}
+              </Text>
+            )}
           </View>
         </View>
 

@@ -3,19 +3,19 @@ import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    Text,
+    View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import {
-  acceptOrder,
-  getOrderById,
-  Order,
-  rejectOrder,
+    acceptOrder,
+    getOrderById,
+    Order,
+    rejectOrder,
 } from "../src/api/order";
 import { getCurrentUserRole } from "../src/api/workerProfile";
 
@@ -146,7 +146,19 @@ export default function OrderDetailsScreen() {
     ]);
   };
 
-  const normalizeStatus = (status: any): number => {
+  const normalizeStatus = (order: any): number => {
+    if (!order) return 0;
+
+    // Check various property names the backend might use
+    const status =
+      order.status !== undefined
+        ? order.status
+        : order.Status !== undefined
+          ? order.Status
+          : order.orderStatus !== undefined
+            ? order.orderStatus
+            : undefined;
+
     // Handle string values from .NET enum serialization
     if (typeof status === "string") {
       const s = status.toLowerCase();
@@ -158,12 +170,15 @@ export default function OrderDetailsScreen() {
     if (status === 1) return 0;
     if (status === 2) return 1;
     if (status === 3) return 2;
-    // 0-based already
-    return Number(status);
+
+    // Default to numeric if present
+    if (status !== undefined && status !== null) return Number(status);
+
+    return 0; // Fallback to Pending if completely missing
   };
 
-  const getStatusText = (status: any) => {
-    switch (normalizeStatus(status)) {
+  const getStatusText = (order: any) => {
+    switch (normalizeStatus(order)) {
       case 0:
         return "Pending";
       case 1:
@@ -171,12 +186,12 @@ export default function OrderDetailsScreen() {
       case 2:
         return "Rejected";
       default:
-        return `Unknown (${status})`;
+        return "Unknown";
     }
   };
 
-  const getStatusColor = (status: any) => {
-    switch (normalizeStatus(status)) {
+  const getStatusColor = (order: any) => {
+    switch (normalizeStatus(order)) {
       case 0:
         return "bg-yellow-100 text-yellow-800";
       case 1:
@@ -199,7 +214,8 @@ export default function OrderDetailsScreen() {
   console.log("[OrderDetails] raw order:", JSON.stringify(order));
 
   const isWorker = role === "Worker";
-  const isPending = normalizeStatus(order.status) === 0;
+  const normalizedStatus = normalizeStatus(order);
+  const isPending = normalizedStatus === 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: "white", paddingTop: 48 }}>
@@ -217,12 +233,8 @@ export default function OrderDetailsScreen() {
             <Text className="text-gray-500 font-semibold uppercase tracking-wider text-xs">
               Order ID
             </Text>
-            <View
-              className={`px-3 py-1 rounded-full ${getStatusColor(order.status)}`}
-            >
-              <Text className="text-xs font-bold">
-                {getStatusText(order.status)}
-              </Text>
+            <View className={`px-3 py-1 rounded-full ${getStatusColor(order)}`}>
+              <Text className="text-xs font-bold">{getStatusText(order)}</Text>
             </View>
           </View>
           <Text className="text-lg font-bold text-gray-800 mb-4">
@@ -366,17 +378,19 @@ export default function OrderDetailsScreen() {
         {/* Already decided — show status banner */}
         {isWorker && !isPending && (
           <View
-            className={`mb-10 p-4 rounded-xl items-center ${order.status === 1 ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}
+            className={`mb-10 p-4 rounded-xl items-center ${normalizedStatus === 1 ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}
           >
             <Ionicons
-              name={order.status === 1 ? "checkmark-circle" : "close-circle"}
+              name={
+                normalizedStatus === 1 ? "checkmark-circle" : "close-circle"
+              }
               size={36}
-              color={order.status === 1 ? "#16A34A" : "#DC2626"}
+              color={normalizedStatus === 1 ? "#16A34A" : "#DC2626"}
             />
             <Text
-              className={`font-bold text-base mt-2 ${order.status === 1 ? "text-green-700" : "text-red-700"}`}
+              className={`font-bold text-base mt-2 ${normalizedStatus === 1 ? "text-green-700" : "text-red-700"}`}
             >
-              {order.status === 1
+              {normalizedStatus === 1
                 ? "You accepted this order"
                 : "You rejected this order"}
             </Text>

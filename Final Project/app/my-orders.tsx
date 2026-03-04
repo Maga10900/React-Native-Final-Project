@@ -2,23 +2,23 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  SafeAreaView,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Pressable,
+    SafeAreaView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import {
-  getOrderById,
-  getOrdersByClientId,
-  getOrdersByWorkerId,
-  Order,
+    getOrderById,
+    getOrdersByClientId,
+    getOrdersByWorkerId,
+    Order,
 } from "../src/api/order";
 import {
-  getCurrentUserRole,
-  getCurrentWorkerId,
+    getCurrentUserRole,
+    getCurrentWorkerId,
 } from "../src/api/workerProfile";
 
 export default function MyOrdersScreen() {
@@ -110,8 +110,37 @@ export default function MyOrdersScreen() {
     }
   };
 
-  const getStatusText = (status: number) => {
-    switch (status) {
+  const normalizeOrderStatus = (order: Order): number => {
+    // Check various property names the backend might use
+    const status =
+      (order as any).status !== undefined
+        ? (order as any).status
+        : (order as any).Status !== undefined
+          ? (order as any).Status
+          : (order as any).orderStatus !== undefined
+            ? (order as any).orderStatus
+            : undefined;
+
+    // Handle string values from .NET enum serialization
+    if (typeof status === "string") {
+      const s = status.toLowerCase();
+      if (s === "pending") return 0;
+      if (s === "accepted") return 1;
+      if (s === "rejected") return 2;
+    }
+    // Some backends use 1-based (1=Pending, 2=Accepted, 3=Rejected)
+    if (status === 1) return 0;
+    if (status === 2) return 1;
+    if (status === 3) return 2;
+
+    // Default to numeric if present
+    if (status !== undefined && status !== null) return Number(status);
+
+    return 0; // Fallback to Pending
+  };
+
+  const getStatusText = (order: Order) => {
+    switch (normalizeOrderStatus(order)) {
       case 0:
         return "Pending";
       case 1:
@@ -123,8 +152,8 @@ export default function MyOrdersScreen() {
     }
   };
 
-  const getStatusColor = (status: number) => {
-    switch (status) {
+  const getStatusColor = (order: Order) => {
+    switch (normalizeOrderStatus(order)) {
       case 0:
         return "bg-yellow-100 text-yellow-800";
       case 1:
@@ -150,12 +179,8 @@ export default function MyOrdersScreen() {
         <Text className="text-lg font-bold text-gray-800">
           Order #{item.id.slice(-6)}
         </Text>
-        <View
-          className={`px-3 py-1 rounded-full ${getStatusColor(item.status)}`}
-        >
-          <Text className="text-xs font-bold">
-            {getStatusText(item.status)}
-          </Text>
+        <View className={`px-3 py-1 rounded-full ${getStatusColor(item)}`}>
+          <Text className="text-xs font-bold">{getStatusText(item)}</Text>
         </View>
       </View>
       <View className="flex-row items-center mb-2">

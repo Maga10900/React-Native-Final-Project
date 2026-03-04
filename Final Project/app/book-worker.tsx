@@ -43,6 +43,7 @@ export default function BookWorkerScreen() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Card">("Cash");
   const [cardInfo, setCardInfo] = useState<CardInfo | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     (async () => {
@@ -101,16 +102,19 @@ export default function BookWorkerScreen() {
   };
 
   const handleBook = async () => {
-    if (!salary || !address || !details) {
-      Alert.alert("Error", "Please fill all fields.");
+    const newErrors: { [key: string]: string } = {};
+    if (!salary) newErrors.salary = "Salary offer is required";
+    if (!address) newErrors.address = "Address is required";
+    if (!details) newErrors.details = "Job details are required";
+    if (paymentMethod === "Card" && !cardInfo)
+      newErrors.payment = "Please add a card in your profile first";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    if (paymentMethod === "Card" && !cardInfo) {
-      Alert.alert("Error", "Please add a card in your profile first.");
-      return;
-    }
-
+    setErrors({});
     setLoading(true);
     try {
       const token = await getToken();
@@ -150,12 +154,20 @@ export default function BookWorkerScreen() {
         <View className="mb-4">
           <Text className="text-gray-700 font-semibold mb-2">Salary Offer</Text>
           <TextInput
-            className="border border-gray-300 rounded-lg p-3 bg-gray-50 text-base"
+            className={`border ${errors.salary ? "border-red-500" : "border-gray-300"} rounded-lg p-3 bg-gray-50 text-base`}
             placeholder="e.g. 100"
             keyboardType="numeric"
             value={salary}
-            onChangeText={setSalary}
+            onChangeText={(text) => {
+              setSalary(text);
+              if (errors.salary) setErrors((prev) => ({ ...prev, salary: "" }));
+            }}
           />
+          {errors.salary && (
+            <Text className="text-red-500 text-xs mt-1 ml-1">
+              {errors.salary}
+            </Text>
+          )}
         </View>
 
         <View className="mb-4">
@@ -170,7 +182,7 @@ export default function BookWorkerScreen() {
               borderRadius: 12,
               overflow: "hidden",
               borderWidth: 1,
-              borderColor: "#D1D5DB",
+              borderColor: errors.address ? "#EF4444" : "#D1D5DB",
               marginBottom: 8,
             }}
           >
@@ -185,15 +197,24 @@ export default function BookWorkerScreen() {
 
           <View className="relative">
             <TextInput
-              className={`border border-gray-300 rounded-lg p-3 bg-gray-50 text-base ${locationLoading ? "opacity-50" : ""}`}
+              className={`border ${errors.address ? "border-red-500" : "border-gray-300"} rounded-lg p-3 bg-gray-50 text-base ${locationLoading ? "opacity-50" : ""}`}
               placeholder="Your full address"
               value={address}
-              onChangeText={setAddress}
+              onChangeText={(text) => {
+                setAddress(text);
+                if (errors.address)
+                  setErrors((prev) => ({ ...prev, address: "" }));
+              }}
             />
             {locationLoading && (
               <View className="absolute right-3 top-3">
                 <ActivityIndicator size="small" color="black" />
               </View>
+            )}
+            {errors.address && (
+              <Text className="text-red-500 text-xs mt-1 ml-1">
+                {errors.address}
+              </Text>
             )}
           </View>
         </View>
@@ -203,13 +224,22 @@ export default function BookWorkerScreen() {
             Job Details & Requirements
           </Text>
           <TextInput
-            className="border border-gray-300 rounded-lg p-3 bg-gray-50 text-base min-h-[100px]"
+            className={`border ${errors.details ? "border-red-500" : "border-gray-300"} rounded-lg p-3 bg-gray-50 text-base min-h-[100px]`}
             placeholder="Describe the job in detail..."
             multiline
             textAlignVertical="top"
             value={details}
-            onChangeText={setDetails}
+            onChangeText={(text) => {
+              setDetails(text);
+              if (errors.details)
+                setErrors((prev) => ({ ...prev, details: "" }));
+            }}
           />
+          {errors.details && (
+            <Text className="text-red-500 text-xs mt-1 ml-1">
+              {errors.details}
+            </Text>
+          )}
         </View>
 
         <View className="mb-6">
@@ -218,7 +248,11 @@ export default function BookWorkerScreen() {
           </Text>
           <View className="flex-row gap-3">
             <Pressable
-              onPress={() => setPaymentMethod("Cash")}
+              onPress={() => {
+                setPaymentMethod("Cash");
+                if (errors.payment)
+                  setErrors((prev) => ({ ...prev, payment: "" }));
+              }}
               className={`flex-1 flex-row items-center justify-center py-3 rounded-xl border ${paymentMethod === "Cash" ? "bg-black border-black" : "bg-white border-gray-200"}`}
             >
               <Ionicons
@@ -233,7 +267,11 @@ export default function BookWorkerScreen() {
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => setPaymentMethod("Card")}
+              onPress={() => {
+                setPaymentMethod("Card");
+                if (errors.payment)
+                  setErrors((prev) => ({ ...prev, payment: "" }));
+              }}
               className={`flex-1 flex-row items-center justify-center py-3 rounded-xl border ${paymentMethod === "Card" ? "bg-black border-black" : "bg-white border-gray-200"}`}
             >
               <Ionicons
@@ -250,7 +288,9 @@ export default function BookWorkerScreen() {
           </View>
 
           {paymentMethod === "Card" && (
-            <View className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <View
+              className={`mt-4 p-4 bg-gray-50 rounded-xl border ${errors.payment ? "border-red-500" : "border-gray-100"}`}
+            >
               {cardInfo ? (
                 <View className="flex-row items-center justify-between">
                   <View>
@@ -265,7 +305,11 @@ export default function BookWorkerScreen() {
                 </View>
               ) : (
                 <Pressable
-                  onPress={() => router.push("/card-payment" as any)}
+                  onPress={() => {
+                    router.push("/card-payment" as any);
+                    if (errors.payment)
+                      setErrors((prev) => ({ ...prev, payment: "" }));
+                  }}
                   className="flex-row items-center"
                 >
                   <Text className="text-red-500 font-semibold flex-1">
@@ -275,6 +319,11 @@ export default function BookWorkerScreen() {
                 </Pressable>
               )}
             </View>
+          )}
+          {errors.payment && !cardInfo && (
+            <Text className="text-red-500 text-xs mt-1 ml-1">
+              {errors.payment}
+            </Text>
           )}
         </View>
 

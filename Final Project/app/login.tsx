@@ -10,8 +10,19 @@ export default function Login() {
   const navigation = useNavigation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const handleLogin = async () => {
+    const newErrors: { [key: string]: string } = {};
+    if (!email) newErrors.email = "Email is required";
+    if (!password) newErrors.password = "Password is required";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
     try {
       const response = await loginUser({ email, password });
       console.log(response);
@@ -41,7 +52,11 @@ export default function Login() {
       keyboardType: "email-address",
       autoCapitalize: "none",
       value: email,
-      onChangeText: setEmail,
+      onChangeText: (text) => {
+        setEmail(text);
+        if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+      },
+      error: errors.email,
     },
     {
       name: "password",
@@ -50,7 +65,11 @@ export default function Login() {
       placeholder: "Enter your password",
       isPassword: true,
       value: password,
-      onChangeText: setPassword,
+      onChangeText: (text) => {
+        setPassword(text);
+        if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
+      },
+      error: errors.password,
     },
   ];
 

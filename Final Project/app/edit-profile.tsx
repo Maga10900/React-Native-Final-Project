@@ -37,6 +37,7 @@ export default function EditProfileScreen() {
   const [email, setEmail] = useState("");
   const [job, setJob] = useState("");
   const [description, setDescription] = useState("");
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     async function fetchProfile() {
@@ -69,6 +70,28 @@ export default function EditProfileScreen() {
       Alert.alert("Error", "Missing worker ID");
       return;
     }
+
+    const newErrors: { [key: string]: string } = {};
+    const nameRegex = /^[a-zA-ZçÇğĞıİöÖşŞüÜ\s\-']+$/;
+
+    if (!firstName) newErrors.firstName = "First name is required";
+    else if (!nameRegex.test(firstName))
+      newErrors.firstName = "Name should not contain numbers";
+
+    if (!lastName) newErrors.lastName = "Last name is required";
+    else if (!nameRegex.test(lastName))
+      newErrors.lastName = "Name should not contain numbers";
+
+    if (!email) newErrors.email = "Email is required";
+    if (!phoneNumber) newErrors.phoneNumber = "Phone number is required";
+    if (!age) newErrors.age = "Age is required";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
 
     try {
       setSaving(true);
@@ -131,11 +154,20 @@ export default function EditProfileScreen() {
               First Name
             </Text>
             <TextInput
-              className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-base text-gray-800"
+              className={`bg-gray-50 border ${errors.firstName ? "border-red-500" : "border-gray-200"} rounded-lg px-4 py-3 text-base text-gray-800`}
               value={firstName}
-              onChangeText={setFirstName}
+              onChangeText={(text) => {
+                setFirstName(text);
+                if (errors.firstName)
+                  setErrors((prev) => ({ ...prev, firstName: "" }));
+              }}
               placeholder="First Name"
             />
+            {errors.firstName && (
+              <Text className="text-red-500 text-xs mt-1 ml-1">
+                {errors.firstName}
+              </Text>
+            )}
           </View>
 
           <View className="mb-4">
@@ -143,11 +175,20 @@ export default function EditProfileScreen() {
               Last Name
             </Text>
             <TextInput
-              className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-base text-gray-800"
+              className={`bg-gray-50 border ${errors.lastName ? "border-red-500" : "border-gray-200"} rounded-lg px-4 py-3 text-base text-gray-800`}
               value={lastName}
-              onChangeText={setLastName}
+              onChangeText={(text) => {
+                setLastName(text);
+                if (errors.lastName)
+                  setErrors((prev) => ({ ...prev, lastName: "" }));
+              }}
               placeholder="Last Name"
             />
+            {errors.lastName && (
+              <Text className="text-red-500 text-xs mt-1 ml-1">
+                {errors.lastName}
+              </Text>
+            )}
           </View>
 
           <View className="mb-4">
@@ -155,13 +196,21 @@ export default function EditProfileScreen() {
               Email
             </Text>
             <TextInput
-              className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-base text-gray-800"
+              className={`bg-gray-50 border ${errors.email ? "border-red-500" : "border-gray-200"} rounded-lg px-4 py-3 text-base text-gray-800`}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+              }}
               placeholder="Email"
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            {errors.email && (
+              <Text className="text-red-500 text-xs mt-1 ml-1">
+                {errors.email}
+              </Text>
+            )}
           </View>
 
           <View className="mb-4">
@@ -169,12 +218,21 @@ export default function EditProfileScreen() {
               Phone Number
             </Text>
             <TextInput
-              className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-base text-gray-800"
+              className={`bg-gray-50 border ${errors.phoneNumber ? "border-red-500" : "border-gray-200"} rounded-lg px-4 py-3 text-base text-gray-800`}
               value={phoneNumber}
-              onChangeText={setPhoneNumber}
+              onChangeText={(text) => {
+                setPhoneNumber(text);
+                if (errors.phoneNumber)
+                  setErrors((prev) => ({ ...prev, phoneNumber: "" }));
+              }}
               placeholder="Phone Number"
               keyboardType="phone-pad"
             />
+            {errors.phoneNumber && (
+              <Text className="text-red-500 text-xs mt-1 ml-1">
+                {errors.phoneNumber}
+              </Text>
+            )}
           </View>
 
           <View className="mb-4">
@@ -182,12 +240,20 @@ export default function EditProfileScreen() {
               Age
             </Text>
             <TextInput
-              className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-base text-gray-800"
+              className={`bg-gray-50 border ${errors.age ? "border-red-500" : "border-gray-200"} rounded-lg px-4 py-3 text-base text-gray-800`}
               value={age}
-              onChangeText={setAge}
+              onChangeText={(text) => {
+                setAge(text);
+                if (errors.age) setErrors((prev) => ({ ...prev, age: "" }));
+              }}
               placeholder="Age"
               keyboardType="numeric"
             />
+            {errors.age && (
+              <Text className="text-red-500 text-xs mt-1 ml-1">
+                {errors.age}
+              </Text>
+            )}
           </View>
 
           <View className="mb-4">
