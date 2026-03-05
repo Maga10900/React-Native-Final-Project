@@ -11,6 +11,7 @@ import {
     View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
+import { addNotification } from "../src/api/notification";
 import {
     acceptOrder,
     getOrderById,
@@ -111,7 +112,20 @@ export default function OrderDetailsScreen() {
           setActionLoading(true);
           try {
             await acceptOrder(order.id);
-            setOrder({ ...order, status: 1 });
+            setOrder({ ...order, status: 2 });
+
+            // Notify client
+            try {
+              await addNotification({
+                workerId: order.workerId,
+                clientId: order.clientId,
+                orderId: order.id,
+                message: `Worker has accepted your order #${order.id.slice(-6)}`,
+              });
+            } catch (notifyErr) {
+              console.error("Failed to notify client:", notifyErr);
+            }
+
             Alert.alert("Success", "Order accepted successfully!");
           } catch (err: any) {
             Alert.alert("Error", err?.message || "Failed to accept order");
@@ -134,7 +148,20 @@ export default function OrderDetailsScreen() {
           setActionLoading(true);
           try {
             await rejectOrder(order.id);
-            setOrder({ ...order, status: 2 });
+            setOrder({ ...order, status: 3 });
+
+            // Notify client
+            try {
+              await addNotification({
+                workerId: order.workerId,
+                clientId: order.clientId,
+                orderId: order.id,
+                message: `Worker has rejected your order #${order.id.slice(-6)}`,
+              });
+            } catch (notifyErr) {
+              console.error("Failed to notify client:", notifyErr);
+            }
+
             Alert.alert("Order Rejected", "The order has been rejected.");
           } catch (err: any) {
             Alert.alert("Error", err?.message || "Failed to reject order");
@@ -149,8 +176,7 @@ export default function OrderDetailsScreen() {
   const normalizeStatus = (order: any): number => {
     if (!order) return 0;
 
-    // Check various property names the backend might use
-    const status =
+    let status =
       order.status !== undefined
         ? order.status
         : order.Status !== undefined
@@ -159,35 +185,34 @@ export default function OrderDetailsScreen() {
             ? order.orderStatus
             : undefined;
 
-    // Handle string values from .NET enum serialization
+    if (status === undefined || status === null) return 0;
+
+    // Handle string values (both "Rejected" and "3")
     if (typeof status === "string") {
       const s = status.toLowerCase();
       if (s === "pending") return 0;
       if (s === "accepted") return 1;
       if (s === "rejected") return 2;
+
+      const num = parseInt(status, 10);
+      if (!isNaN(num)) status = num;
     }
-    // Some backends use 1-based (1=Pending, 2=Accepted, 3=Rejected)
+
+    // Backend is 1-based (1=Pending, 2=Accepted, 3=Rejected)
+    // We map to 0-based for internal UI logic (0=Pending, 1=Accepted, 2=Rejected)
     if (status === 1) return 0;
     if (status === 2) return 1;
     if (status === 3) return 2;
 
-    // Default to numeric if present
-    if (status !== undefined && status !== null) return Number(status);
-
-    return 0; // Fallback to Pending if completely missing
+    return 0;
   };
 
   const getStatusText = (order: any) => {
-    switch (normalizeStatus(order)) {
-      case 0:
-        return "Pending";
-      case 1:
-        return "Accepted";
-      case 2:
-        return "Rejected";
-      default:
-        return "Unknown";
-    }
+    const s = normalizeStatus(order);
+    if (s === 0) return "Pending";
+    if (s === 1) return "Accepted";
+    if (s === 2) return "Rejected";
+    return "Unknown";
   };
 
   const getStatusColor = (order: any) => {

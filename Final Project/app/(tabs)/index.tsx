@@ -1,20 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    Pressable,
-    Text,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Pressable,
+  Text,
+  View,
 } from "react-native";
 import { getOrdersByWorkerId, Order } from "../../src/api/order";
 import { getAllWorkers } from "../../src/api/worker";
 import {
-    getCurrentUserRole,
-    getCurrentWorkerId,
-    WorkerProfile,
+  getCurrentUserRole,
+  getCurrentWorkerId,
+  WorkerProfile,
 } from "../../src/api/workerProfile";
 
 export default function TabIndex() {
@@ -23,30 +23,32 @@ export default function TabIndex() {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const userRole = await getCurrentUserRole();
-        setRole(userRole);
+  useFocusEffect(
+    useCallback(() => {
+      async function load() {
+        try {
+          const userRole = await getCurrentUserRole();
+          setRole(userRole);
 
-        if (userRole === "Worker" || userRole === "4") {
-          const workerId = await getCurrentWorkerId();
-          if (workerId) {
-            const ordersData = await getOrdersByWorkerId(workerId);
-            setOrders(ordersData || []);
+          if (userRole === "Worker" || userRole === "4") {
+            const workerId = await getCurrentWorkerId();
+            if (workerId) {
+              const ordersData = await getOrdersByWorkerId(workerId);
+              setOrders(ordersData || []);
+            }
+          } else {
+            const data = await getAllWorkers();
+            setWorkers(data || []);
           }
-        } else {
-          const data = await getAllWorkers();
-          setWorkers(data || []);
+        } catch (error) {
+          console.error("Failed to load data", error);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Failed to load data", error);
-      } finally {
-        setLoading(false);
       }
-    }
-    load();
-  }, []);
+      load();
+    }, []),
+  );
 
   const renderWorker = ({ item }: { item: WorkerProfile }) => (
     <View className="bg-white p-4 m-4 rounded-xl shadow-sm border border-gray-100">
@@ -97,26 +99,47 @@ export default function TabIndex() {
     </View>
   );
 
-  const getStatusText = (status: number) => {
-    switch (status) {
-      case 0:
-        return "Pending";
+  const normalizeOrderStatus = (status: any): number => {
+    if (status === undefined || status === null) return 0;
+
+    let s = status;
+
+    // Handle string values (both "Rejected" and "3")
+    if (typeof s === "string") {
+      const lower = s.toLowerCase();
+      if (lower === "pending") return 1;
+      if (lower === "accepted") return 2;
+      if (lower === "rejected") return 3;
+
+      const num = parseInt(s, 10);
+      if (!isNaN(num)) s = num;
+    }
+
+    return s;
+  };
+
+  const getStatusText = (status: any) => {
+    const s = normalizeOrderStatus(status);
+    switch (s) {
       case 1:
-        return "Accepted";
+        return "Pending";
       case 2:
+        return "Accepted";
+      case 3:
         return "Rejected";
       default:
         return "Unknown";
     }
   };
 
-  const getStatusColor = (status: number) => {
-    switch (status) {
-      case 0:
-        return "bg-yellow-100 text-yellow-800";
+  const getStatusColor = (status: any) => {
+    const s = normalizeOrderStatus(status);
+    switch (s) {
       case 1:
-        return "bg-green-100 text-green-800";
+        return "bg-yellow-100 text-yellow-800";
       case 2:
+        return "bg-green-100 text-green-800";
+      case 3:
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";

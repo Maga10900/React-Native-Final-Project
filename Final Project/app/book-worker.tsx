@@ -1,20 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
-import { jwtDecode } from "jwt-decode";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { createOrder } from "../src/api/order";
-import { CardInfo, getCard } from "../src/storage/card";
+import { getCurrentWorkerId } from "../src/api/workerProfile";
+import { CardInfo, getCards } from "../src/storage/card";
 import { getToken } from "../src/storage/token";
 
 interface Region {
@@ -42,7 +42,8 @@ export default function BookWorkerScreen() {
   } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Card">("Cash");
-  const [cardInfo, setCardInfo] = useState<CardInfo | null>(null);
+  const [cards, setCards] = useState<CardInfo[]>([]);
+  const [selectedCardIndex, setSelectedCardIndex] = useState(0);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
@@ -69,9 +70,9 @@ export default function BookWorkerScreen() {
       });
       reverseGeocode(location.coords.latitude, location.coords.longitude);
 
-      // Load card info
-      const card = await getCard();
-      setCardInfo(card);
+      // Load all cards
+      const data = await getCards();
+      setCards(data);
     })();
   }, []);
 
@@ -106,7 +107,7 @@ export default function BookWorkerScreen() {
     if (!salary) newErrors.salary = "Salary offer is required";
     if (!address) newErrors.address = "Address is required";
     if (!details) newErrors.details = "Job details are required";
-    if (paymentMethod === "Card" && !cardInfo)
+    if (paymentMethod === "Card" && cards.length === 0)
       newErrors.payment = "Please add a card in your profile first";
 
     if (Object.keys(newErrors).length > 0) {
@@ -120,8 +121,8 @@ export default function BookWorkerScreen() {
       const token = await getToken();
       if (!token) throw new Error("Authentication required");
 
-      const decoded = jwtDecode<any>(token);
-      const clientId = decoded.id || decoded.nameid;
+      const clientId = await getCurrentWorkerId();
+      if (!clientId) throw new Error("Failed to retrieve Client ID");
 
       await createOrder({
         workerId: workerId as string,
@@ -288,20 +289,65 @@ export default function BookWorkerScreen() {
           </View>
 
           {paymentMethod === "Card" && (
-            <View
-              className={`mt-4 p-4 bg-gray-50 rounded-xl border ${errors.payment ? "border-red-500" : "border-gray-100"}`}
-            >
-              {cardInfo ? (
-                <View className="flex-row items-center justify-between">
-                  <View>
-                    <Text className="text-gray-800 font-bold">
-                      **** **** **** {cardInfo.cardNumber.slice(-4)}
-                    </Text>
-                    <Text className="text-gray-500 text-xs">
-                      {cardInfo.cardHolderName} • Exp: {cardInfo.expiryDate}
-                    </Text>
-                  </View>
-                  <Ionicons name="checkmark-circle" size={24} color="black" />
+            <View className={`mt-4 ${errors.payment ? "border-red-500" : ""}`}>
+              {cards.length > 0 ? (
+                <View>
+                  <Text className="text-gray-500 text-xs mb-3 ml-1">
+                    Select card for payment:
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    className="flex-row gap-3"
+                  >
+                    {cards.map((card, index) => (
+                      <Pressable
+                        key={card.id}
+                        onPress={() => setSelectedCardIndex(index)}
+                        className={`p-4 rounded-2xl border min-w-[200px] mr-3 ${selectedCardIndex === index ? "bg-black border-black" : "bg-gray-50 border-gray-100"}`}
+                      >
+                        <View className="flex-row justify-between items-start mb-4">
+                          <Ionicons
+                            name="card"
+                            size={24}
+                            color={
+                              selectedCardIndex === index ? "white" : "black"
+                            }
+                          />
+                          {selectedCardIndex === index && (
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={20}
+                              color="white"
+                            />
+                          )}
+                        </View>
+                        <Text
+                          className={`font-bold ${selectedCardIndex === index ? "text-white" : "text-gray-800"}`}
+                        >
+                          **** {card.cardNumber.slice(-4)}
+                        </Text>
+                        <Text
+                          className={`text-xs ${selectedCardIndex === index ? "text-gray-300" : "text-gray-500"}`}
+                        >
+                          {card.cardHolderName}
+                        </Text>
+                      </Pressable>
+                    ))}
+                    <Pressable
+                      onPress={() => router.push("/card-payment" as any)}
+                      className="p-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 min-w-[120px] justify-center items-center"
+                    >
+                      <Ionicons
+                        name="add-circle-outline"
+                        size={24}
+                        color="gray"
+                      />
+                      <Text className="text-gray-500 text-xs mt-1 font-semibold">
+                        Add Card
+                      </Text>
+                    </Pressable>
+                  </ScrollView>
                 </View>
               ) : (
                 <Pressable
@@ -310,7 +356,7 @@ export default function BookWorkerScreen() {
                     if (errors.payment)
                       setErrors((prev) => ({ ...prev, payment: "" }));
                   }}
-                  className="flex-row items-center"
+                  className="flex-row items-center p-4 bg-gray-50 rounded-xl border border-red-100"
                 >
                   <Text className="text-red-500 font-semibold flex-1">
                     No card found. Click to add one.
@@ -320,7 +366,7 @@ export default function BookWorkerScreen() {
               )}
             </View>
           )}
-          {errors.payment && !cardInfo && (
+          {errors.payment && cards.length === 0 && (
             <Text className="text-red-500 text-xs mt-1 ml-1">
               {errors.payment}
             </Text>

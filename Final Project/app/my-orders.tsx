@@ -111,8 +111,9 @@ export default function MyOrdersScreen() {
   };
 
   const normalizeOrderStatus = (order: Order): number => {
-    // Check various property names the backend might use
-    const status =
+    if (!order) return 0;
+
+    let status =
       (order as any).status !== undefined
         ? (order as any).status
         : (order as any).Status !== undefined
@@ -121,22 +122,26 @@ export default function MyOrdersScreen() {
             ? (order as any).orderStatus
             : undefined;
 
-    // Handle string values from .NET enum serialization
+    if (status === undefined || status === null) return 0;
+
+    // Handle string values (both "Rejected" and "3")
     if (typeof status === "string") {
       const s = status.toLowerCase();
       if (s === "pending") return 0;
       if (s === "accepted") return 1;
       if (s === "rejected") return 2;
+
+      const num = parseInt(status, 10);
+      if (!isNaN(num)) status = num;
     }
-    // Some backends use 1-based (1=Pending, 2=Accepted, 3=Rejected)
+
+    // Backend is 1-based (1=Pending, 2=Accepted, 3=Rejected)
+    // We map to 0-based for internal UI logic (0=Pending, 1=Accepted, 2=Rejected)
     if (status === 1) return 0;
     if (status === 2) return 1;
     if (status === 3) return 2;
 
-    // Default to numeric if present
-    if (status !== undefined && status !== null) return Number(status);
-
-    return 0; // Fallback to Pending
+    return 0;
   };
 
   const getStatusText = (order: Order) => {

@@ -27,7 +27,7 @@ export interface Order {
   salary: number;
   address: string;
   details: string;
-  status: number; // 0: Pending, 1: Accepted, 2: Rejected
+  status: number; // 1: Pending, 2: Accepted, 3: Rejected
   photos?: string[];
   createdDate?: string;
 }
@@ -65,24 +65,13 @@ export async function getOrdersByClientId(clientId: string): Promise<Order[]> {
   return response.data;
 }
 
-// Backend has no GetByWorkerId endpoint and GetAll may be admin-only.
-// We use the worker's notifications (which contain orderId) to get the worker's orders.
+// Backend has no dedicated GetByWorkerId endpoint.
+// We fetch all orders and filter by workerId on the client side.
 export async function getOrdersByWorkerId(workerId: string): Promise<Order[]> {
-  const { getWorkerNotifications } = await import("./notification");
-  const notifications = await getWorkerNotifications(workerId);
-  if (!notifications || notifications.length === 0) return [];
+  const allOrders = await getAllOrders();
+  if (!allOrders) return [];
 
-  // Deduplicate order IDs from notifications
-  const orderIds = [...new Set(notifications.map((n) => n.orderId))];
-
-  // Fetch each order by ID in parallel
-  const orders = await Promise.allSettled(
-    orderIds.map((orderId) => getOrderById(orderId)),
-  );
-
-  return orders
-    .filter((r) => r.status === "fulfilled")
-    .map((r) => (r as PromiseFulfilledResult<Order>).value);
+  return allOrders.filter((order) => order.workerId === workerId);
 }
 
 export async function acceptOrder(orderId: string): Promise<any> {
